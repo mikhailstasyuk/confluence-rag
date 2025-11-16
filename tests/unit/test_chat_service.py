@@ -1,4 +1,3 @@
-from fastapi.testclient import TestClient
 from openai import OpenAI
 from openai.types.chat import (
     ChatCompletion,
@@ -8,15 +7,12 @@ from openai.types.chat.chat_completion import Choice
 import pytest
 from pytest_mock import MockerFixture
 
-from src.app.main import app
 from src.app.chat.service import ChatService
 from src.app.chat.schemas import (
     ChatMessage, 
     CreateChatRequest, 
     ChatResponse
 )
-
-client = TestClient(app)
 
 
 @pytest.fixture
