@@ -10,7 +10,11 @@ from pytest_mock import MockerFixture
 
 from src.app.main import app
 from src.app.chat.service import ChatService
-from src.app.chat.schemas import ChatResponse
+from src.app.chat.schemas import (
+    ChatMessage, 
+    CreateChatRequest, 
+    ChatResponse
+)
 
 client = TestClient(app)
 
@@ -48,7 +52,7 @@ def test_chat_service_calls_openai(
             )
         ],
         created=1234567890,
-        model="gpt-5",
+        model="test-model",
         object="chat.completion",
     )
     mock_create_completion = mocker.patch.object(
@@ -100,4 +104,29 @@ def test_chat_service_returns_chat_response_object(
         model="test-model",
     )
     assert isinstance(response, ChatResponse)
+    
+
+def test_create_chat_request_valid():
+    request = CreateChatRequest(
+        model="test-model",
+        messages=[
+            {"role": "user", "message": "Hi"},
+            {"role": "assistant", "message": "Hello"},
+        ]
+    )
+    assert isinstance(request, CreateChatRequest)
+    assert request.model == "test-model"
+    assert request.messages is not None
+    assert len(request.messages) == 2
+    assert request.messages[0]["role"] == "user"
+
+
+def test_chat_message_valid():
+    message = ChatMessage(
+        role="user",
+        content="Hi",
+    )
+    assert isinstance(message, ChatMessage)
+    assert message.role == "user"
+    assert message.content == "Hi"
     
