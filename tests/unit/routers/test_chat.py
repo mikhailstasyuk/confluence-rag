@@ -1,13 +1,14 @@
 from fastapi.testclient import TestClient
+from typing import Any
 
 from src.app.chat.schemas import ChatResponse
 
-payload = {
+payload: dict[str, Any] = {
     "model": "test-model", 
     "messages": [
-        {"role": "user", "message": "Hi"},
-        {"role": "assistant", "message": "Hello"},
-        {"role": "user", "message": "What is molasses?"},
+        {"role": "user", "content": "Hi"},
+        {"role": "assistant", "content": "Hello"},
+        {"role": "user", "content": "What is molasses?"},
     ]
 }
 

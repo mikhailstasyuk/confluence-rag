@@ -9,7 +9,7 @@ from src.app.chat.service import ChatService
 
 
 @pytest.fixture
-def mock_service(mock_openai_client: OpenAI) -> ChatService:
+def mock_service(mock_openai_client: OpenAI):
     return ChatService(
         openai_client=mock_openai_client
     )
@@ -31,4 +31,3 @@ def client_with_mock_service(mock_service: ChatService):
         yield client
     
     app.dependency_overrides.clear()
-    
