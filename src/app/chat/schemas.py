@@ -9,7 +9,7 @@ class ChatMessage(BaseModel):
 
 class CreateChatRequest(BaseModel):
     model: str
-    messages: list[dict[str, str]] | None
+    messages: list[ChatMessage] | None
     
 
 class ChatResponse(BaseModel):

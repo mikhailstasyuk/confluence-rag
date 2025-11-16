@@ -4,7 +4,6 @@ from openai.types.chat import (
     ChatCompletionMessage,
 )
 from openai.types.chat.chat_completion import Choice
-import pytest
 from pytest_mock import MockerFixture
 
 from src.app.chat.service import ChatService
@@ -13,21 +12,6 @@ from src.app.chat.schemas import (
     CreateChatRequest, 
     ChatResponse
 )
-
-
-@pytest.fixture
-def mock_openai_client(mocker: MockerFixture) -> OpenAI:
-    client = mocker.Mock(spec=OpenAI)
-    client.chat = mocker.Mock()
-    client.chat.completions = mocker.Mock()
-    return client
-
-
-@pytest.fixture
-def mock_service(mock_openai_client: OpenAI) -> ChatService:
-    return ChatService(
-        openai_client=mock_openai_client
-    )
 
 
 def test_chat_service_calls_openai(
