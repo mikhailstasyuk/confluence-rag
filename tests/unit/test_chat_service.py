@@ -114,15 +114,15 @@ def test_create_chat_request_valid():
     request = CreateChatRequest(
         model="test-model",
         messages=[
-            {"role": "user", "message": "Hi"},
-            {"role": "assistant", "message": "Hello"},
+            ChatMessage(role="user", content="Hi"),
+            ChatMessage(role="assistant", content="Hello"),
         ]
     )
     assert isinstance(request, CreateChatRequest)
     assert request.model == "test-model"
     assert request.messages is not None
     assert len(request.messages) == 2
-    assert request.messages[0]["role"] == "user"
+    assert request.messages[0].role == "user"
 
 
 def test_chat_message_valid():
