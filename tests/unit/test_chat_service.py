@@ -7,18 +7,14 @@ from openai.types.chat.chat_completion import Choice
 from pytest_mock import MockerFixture
 
 from src.app.chat.service import ChatService
-from src.app.chat.schemas import (
-    ChatMessage, 
-    CreateChatRequest, 
-    ChatResponse
-)
+from src.app.chat.schemas import ChatMessage, CreateChatRequest, ChatResponse
 
 
 def test_chat_service_calls_openai(
-        mock_service: ChatService,
-        mock_openai_client: OpenAI,
-        mocker: MockerFixture,
-)-> None:
+    mock_service: ChatService,
+    mock_openai_client: OpenAI,
+    mocker: MockerFixture,
+) -> None:
     mock_completion = ChatCompletion(
         id="test-id",
         choices=[
@@ -36,14 +32,16 @@ def test_chat_service_calls_openai(
         object="chat.completion",
     )
     mock_create_completion = mocker.patch.object(
-        mock_openai_client.chat.completions,
-        "create",
-        return_value=mock_completion
+        mock_openai_client.chat.completions, "create", return_value=mock_completion
     )
-    response = mock_service.generate_response(
-        messages=[{"role": "user", "content": "Hi"}],
+    chat_input: CreateChatRequest = CreateChatRequest(
         model="test-model",
+        messages=[
+            ChatMessage(role="user", content="Hi"),
+            ChatMessage(role="assistant", content="Ok"),
+        ],
     )
+    mock_service.generate_response(chat_input)
     mock_create_completion.assert_called_once()
 
 
@@ -56,55 +54,71 @@ def test_chat_service_passes_messages_and_model(
         mock_openai_client.chat.completions,
         "create",
         return_value=mocker.Mock(
-            choices=[mocker.Mock(message=mocker.Mock(content="ok"))])
+            choices=[mocker.Mock(message=mocker.Mock(content="ok"))]
+        ),
     )
-    mock_service.generate_response(
-        messages=[{"role": "user", "content": "Hi"}],
+    chat_input: CreateChatRequest = CreateChatRequest(
         model="test-model",
+        messages=[
+            ChatMessage(role="user", content="Hi"),
+            ChatMessage(role="assistant", content="Ok"),
+        ],
     )
+    mock_service.generate_response(chat_input)
     mock_create.assert_called_once_with(
-        messages=[{"role": "user", "content": "Hi"}],
+        messages=[
+            {"role": "user", "content": "Hi"},
+            {"role": "assistant", "content": "Ok"},
+        ],
         model="test-model",
     )
 
+
 def test_chat_service_returns_chat_response_object(
-        mock_service: ChatService,
-        mock_openai_client: OpenAI,
-        mocker: MockerFixture,
-)-> None:
+    mock_service: ChatService,
+    mock_openai_client: OpenAI,
+    mocker: MockerFixture,
+) -> None:
     mocker.patch.object(
         mock_openai_client.chat.completions,
         "create",
         return_value=mocker.Mock(
             choices=[mocker.Mock(message=mocker.Mock(content="ok"))]
-        )
+        ),
     )
-    response = mock_service.generate_response(
-        messages=[{"role": "user", "content": "Hi"}],
+    chat_input: CreateChatRequest = CreateChatRequest(
         model="test-model",
+        messages=[
+            ChatMessage(role="user", content="Hi"),
+            ChatMessage(role="assistant", content="Ok"),
+        ],
     )
+    response = mock_service.generate_response(chat_input)
     assert isinstance(response, ChatResponse)
     assert isinstance(response.message, str)
     assert response.message == "ok"
-    
+
 
 def test_chat_service_handles_none_message(
-        mock_service: ChatService,
-        mock_openai_client: OpenAI,
-        mocker: MockerFixture,
-)-> None:
+    mock_service: ChatService,
+    mock_openai_client: OpenAI,
+    mocker: MockerFixture,
+) -> None:
     mocker.patch.object(
         mock_openai_client.chat.completions,
         "create",
         return_value=mocker.Mock(
             choices=[mocker.Mock(message=mocker.Mock(content=None))]
-        )
+        ),
     )
-
-    response = mock_service.generate_response(
-        messages=[{"role": "user", "content": "Hi"}],
+    chat_input: CreateChatRequest = CreateChatRequest(
         model="test-model",
+        messages=[
+            ChatMessage(role="user", content="Hi"),
+            ChatMessage(role="assistant", content="Hello"),
+        ],
     )
+    response = mock_service.generate_response(chat_input)
 
     assert isinstance(response, ChatResponse)
     assert response.message is None
@@ -116,7 +130,7 @@ def test_create_chat_request_valid():
         messages=[
             ChatMessage(role="user", content="Hi"),
             ChatMessage(role="assistant", content="Hello"),
-        ]
+        ],
     )
     assert isinstance(request, CreateChatRequest)
     assert request.model == "test-model"
