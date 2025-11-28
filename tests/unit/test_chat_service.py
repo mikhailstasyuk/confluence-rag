@@ -1,4 +1,6 @@
-from openai import OpenAI
+import httpx
+import pytest
+from openai import AuthenticationError, RateLimitError, APIConnectionError, OpenAI
 from openai.types.chat import (
     ChatCompletion,
     ChatCompletionMessage,
@@ -6,6 +8,12 @@ from openai.types.chat import (
 from openai.types.chat.chat_completion import Choice
 from pytest_mock import MockerFixture
 
+from src.app.chat.exceptions import (
+    AuthenticationFailedError,
+    RateLimitExceededError,
+    OpenAIConnectionError,
+    EmptyResponseError,
+)
 from src.app.chat.service import ChatService
 from src.app.chat.schemas import ChatMessage, CreateChatRequest, ChatResponse
 
@@ -147,3 +155,128 @@ def test_chat_message_valid():
     assert isinstance(message, ChatMessage)
     assert message.role == "user"
     assert message.content == "Hi"
+
+
+def test_chat_service_handles_openai_auth_error(
+    mock_service: ChatService,
+    mock_openai_client: OpenAI,
+    mocker: MockerFixture,
+):
+    """Service should raise AuthenticationFailedError when OpenAI auth fails."""
+    mock_response = httpx.Response(
+        status_code=401,
+        request=httpx.Request("POST", "https://api.openai.com/v1/chat/completions"),
+    )
+    auth_error = AuthenticationError(
+        "Incorrect API key provided",
+        response=mock_response,
+        body={
+            "error": {
+                "message": "Incorrect API key provided",
+                "type": "invalid_request_error",
+            }
+        },
+    )
+
+    mocker.patch.object(
+        mock_openai_client.chat.completions,
+        "create",
+        side_effect=auth_error,
+    )
+
+    chat_input = CreateChatRequest(
+        model="test-model",
+        messages=[ChatMessage(role="user", content="Hi")],
+    )
+
+    with pytest.raises(AuthenticationFailedError) as exc_info:
+        mock_service.generate_response(chat_input)
+
+    assert exc_info.value.status_code == 401
+    assert "authentication" in exc_info.value.message.lower()
+
+
+def test_chat_service_handles_openai_rate_limit_error(
+    mock_service: ChatService,
+    mock_openai_client: OpenAI,
+    mocker: MockerFixture,
+):
+    """Service should raise RateLimitExceededError when OpenAI rate limit is hit."""
+    mock_response = httpx.Response(
+        status_code=429,
+        request=httpx.Request("POST", "https://api.openai.com/v1/chat/completions"),
+    )
+    rate_limit_error = RateLimitError(
+        "Rate limit exceeded",
+        response=mock_response,
+        body={"error": {"message": "Rate limit exceeded", "type": "rate_limit_error"}},
+    )
+
+    mocker.patch.object(
+        mock_openai_client.chat.completions,
+        "create",
+        side_effect=rate_limit_error,
+    )
+
+    chat_input = CreateChatRequest(
+        model="test-model",
+        messages=[ChatMessage(role="user", content="Hi")],
+    )
+
+    with pytest.raises(RateLimitExceededError) as exc_info:
+        mock_service.generate_response(chat_input)
+
+    assert exc_info.value.status_code == 429
+    assert "rate limit" in exc_info.value.message.lower()
+
+
+def test_chat_service_handles_openai_api_connection_error(
+    mock_service: ChatService,
+    mock_openai_client: OpenAI,
+    mocker: MockerFixture,
+):
+    """Service should raise OpenAIConnectionError when connection fails."""
+    connection_error = APIConnectionError(
+        request=httpx.Request("POST", "https://api.openai.com/v1/chat/completions"),
+    )
+
+    mocker.patch.object(
+        mock_openai_client.chat.completions,
+        "create",
+        side_effect=connection_error,
+    )
+
+    chat_input = CreateChatRequest(
+        model="test-model",
+        messages=[ChatMessage(role="user", content="Hi")],
+    )
+
+    with pytest.raises(OpenAIConnectionError) as exc_info:
+        mock_service.generate_response(chat_input)
+
+    assert exc_info.value.status_code == 502
+    assert "connect" in exc_info.value.message.lower()
+
+
+def test_chat_service_handles_empty_choices(
+    mock_service: ChatService,
+    mock_openai_client: OpenAI,
+    mocker: MockerFixture,
+):
+    """Service should raise EmptyResponseError when choices array is empty."""
+    mocker.patch.object(
+        mock_openai_client.chat.completions,
+        "create",
+        return_value=mocker.Mock(choices=[]),  # Empty choices array
+    )
+
+    chat_input = CreateChatRequest(
+        model="test-model",
+        messages=[ChatMessage(role="user", content="Hi")],
+    )
+
+    with pytest.raises(EmptyResponseError) as exc_info:
+        mock_service.generate_response(chat_input)
+
+    assert exc_info.value.status_code == 500
+    assert "empty" in exc_info.value.message.lower()

@@ -1,10 +1,17 @@
-from src.app.chat.schemas import ChatResponse, CreateChatRequest
+from openai import AuthenticationError, RateLimitError, APIConnectionError, OpenAI
 from openai.types.chat import (
     ChatCompletionMessageParam,
     ChatCompletionUserMessageParam,
     ChatCompletionAssistantMessageParam,
 )
-from openai import OpenAI
+
+from src.app.chat.exceptions import (
+    AuthenticationFailedError,
+    RateLimitExceededError,
+    OpenAIConnectionError,
+    EmptyResponseError,
+)
+from src.app.chat.schemas import ChatResponse, CreateChatRequest
 
 
 class ChatService:
@@ -22,9 +29,25 @@ class ChatService:
             )
             for msg in (chat_input.messages or [])
         ]
-        response = self.chat_client.chat.completions.create(
-            model=chat_input.model,
-            messages=messages,
-        )
+
+        try:
+            response = self.chat_client.chat.completions.create(
+                model=chat_input.model,
+                messages=messages,
+            )
+        except AuthenticationError as e:
+            raise AuthenticationFailedError(
+                message=f"OpenAI authentication failed: {e.message}"
+            )
+        except RateLimitError as e:
+            raise RateLimitExceededError(
+                message=f"OpenAI rate limit exceeded: {e.message}"
+            )
+        except APIConnectionError:
+            raise OpenAIConnectionError(message="Failed to connect to OpenAI API")
+
+        if not response.choices:
+            raise EmptyResponseError(message="OpenAI returned an empty response")
+
         message = response.choices[0].message
         return ChatResponse(message=message.content)
