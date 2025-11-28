@@ -3,6 +3,8 @@ from fastapi import Depends
 from openai import OpenAI
 from src.app.config import Settings, get_settings
 
+DEFAULT_TIMEOUT = 5.0
+
 
 @dataclass
 class OpenAIConfig:
