@@ -65,6 +65,7 @@ def test_chat_service_passes_messages_and_model(
     mock_openai_client: OpenAI,
     mocker: MockerFixture,
 ):
+    """Service should pass model and correctly structured messages to OpenAI."""
     mock_create = mocker.patch.object(
         mock_openai_client.chat.completions,
         "create",
@@ -77,16 +78,29 @@ def test_chat_service_passes_messages_and_model(
         messages=[
             ChatMessage(role="user", content="Hi"),
             ChatMessage(role="assistant", content="Ok"),
+            ChatMessage(role="user", content="What is TDD?"),
         ],
     )
     mock_service.generate_response(chat_input)
-    mock_create.assert_called_once_with(
-        messages=[
-            {"role": "user", "content": "Hi"},
-            {"role": "assistant", "content": "Ok"},
-        ],
-        model="test-model",
-    )
+
+    # Verify model is passed correctly
+    call_kwargs = mock_create.call_args.kwargs
+    assert call_kwargs["model"] == "test-model"
+
+    # Verify message structure: system prompt first, then chat history, then user message
+    messages = call_kwargs["messages"]
+    assert messages[0]["role"] == "system"
+    assert "You are a test assistant" in messages[0]["content"]
+
+    # Chat history (all but last message, sliced by chat_history_limit)
+    assert messages[1]["role"] == "user"
+    assert messages[1]["content"] == "Hi"
+    assert messages[2]["role"] == "assistant"
+    assert messages[2]["content"] == "Ok"
+
+    # Final user message
+    assert messages[-1]["role"] == "user"
+    assert messages[-1]["content"] == "What is TDD?"
 
 
 def test_chat_service_returns_chat_response_object(

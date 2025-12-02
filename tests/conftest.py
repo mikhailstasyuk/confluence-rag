@@ -10,7 +10,15 @@ from src.app.chat.service import ChatService
 
 @pytest.fixture
 def mock_service(mock_openai_client: OpenAI):
-    return ChatService(openai_client=mock_openai_client)
+    return ChatService(
+        openai_client=mock_openai_client,
+        project_name="Test",
+        project_description="Test",
+        base_system_prompt="You are a test assistant",
+        chat_history_limit=20,
+        max_iterations=5,
+        retrieval_top_k=10,
+    )
 
 
 @pytest.fixture
