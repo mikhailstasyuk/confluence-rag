@@ -7,8 +7,18 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
     )
+    # Application Configuration
+    PROJECT_NAME: str = "The current project"
+    PROJECT_DESCRIPTION: str = "The current project decription"
 
+    # Provide Configuration
     OPENAI_API_KEY: str | None = None
+
+    # Chat Settings
+    BASE_SYSTEM_PROMPT: str = "You are an AI assistant specialized in retrieving and synthesizing information to provide relevant answers to queries."
+    CHAT_HISTORY_LIMIT: int = 20
+    MAX_CHAT_ITERATIONS: int = 5
+    RETRIEVAL_TOP_K: int = 10
 
 
 @lru_cache
