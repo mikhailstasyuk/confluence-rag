@@ -1,0 +1,42 @@
+from fastapi.testclient import TestClient
+from openai import OpenAI
+import pytest
+from pytest_mock import MockerFixture
+
+from src.app.main import app
+from src.app.chat.dependencies import get_chat_service
+from src.app.chat.service import ChatService
+
+
+@pytest.fixture
+def mock_service(mock_openai_client: OpenAI):
+    return ChatService(
+        openai_client=mock_openai_client,
+        project_name="Test",
+        project_description="Test",
+        base_system_prompt="You are a test assistant",
+        chat_history_limit=20,
+        max_iterations=5,
+        retrieval_top_k=10,
+    )
+
+
+@pytest.fixture
+def mock_openai_client(mocker: MockerFixture) -> OpenAI:
+    client = mocker.Mock(spec=OpenAI)
+    client.chat = mocker.Mock()
+    client.chat.completions = mocker.Mock()
+    client.chat.completions.create.return_value = mocker.Mock(
+        choices=[mocker.Mock(message=mocker.Mock(content="Hello Kitty"))]
+    )
+    return client
+
+
+@pytest.fixture
+def client_with_mock_service(mock_service: ChatService):
+    app.dependency_overrides[get_chat_service] = lambda: mock_service
+
+    with TestClient(app) as client:
+        yield client
+
+    app.dependency_overrides.clear()
